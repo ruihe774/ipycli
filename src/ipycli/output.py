@@ -53,7 +53,10 @@ def kernels(data: list[dict]) -> str:
 
 
 def launched(data: dict) -> str:
-    return f"Launched kernel {data['kernel_id']} (spec={data['spec']}, pid={data['pid']})"
+    return (
+        f"Launched kernel {data['kernel_id']} "
+        f"(spec={data['spec']}, pid={data['pid']}, cwd={data.get('cwd', '')})"
+    )
 
 
 def execution(data: dict) -> str:

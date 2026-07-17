@@ -47,11 +47,14 @@ def list_kernelspecs(plain: bool = PlainOpt):
 @app.command("launch-kernel")
 def launch_kernel(
     spec: str = typer.Argument("python3", help="Kernel spec name (see list-kernelspecs)."),
+    cwd: Optional[str] = typer.Option(
+        None, "--cwd", help="Working directory for the kernel process. Defaults to the current directory.",
+    ),
     plain: bool = PlainOpt,
 ):
     """Launch a kernel in the background (detached) and print its unique id."""
     try:
-        kernel_id = kernel.launch(spec)
+        kernel_id = kernel.launch(spec, cwd=cwd)
     except kernel.KernelError as exc:
         _fail(str(exc), plain)
     meta = state.load_meta(kernel_id)

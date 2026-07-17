@@ -62,13 +62,23 @@ def list_kernelspecs() -> list[dict[str, Any]]:
     return out
 
 
-def launch(spec_name: str) -> str:
-    """Launch a detached kernel for ``spec_name`` and return its kernel id."""
+def launch(spec_name: str, cwd: Optional[str] = None) -> str:
+    """Launch a detached kernel for ``spec_name`` and return its kernel id.
+
+    ``cwd`` is the working directory the kernel process runs in; defaults to
+    the caller's current directory.
+    """
+    import os
+
     ksm = KernelSpecManager()
     try:
         spec = ksm.get_kernel_spec(spec_name)
     except NoSuchKernel as exc:
         raise KernelError(f"No such kernel spec: {spec_name}") from exc
+
+    work_dir = os.path.abspath(cwd) if cwd else os.getcwd()
+    if not os.path.isdir(work_dir):
+        raise KernelError(f"No such directory: {work_dir}")
 
     kernel_id = state.new_id()
     kdir = state.create_kernel_dir(kernel_id)
@@ -77,7 +87,7 @@ def launch(spec_name: str) -> str:
     # Generate ports + HMAC key and write the connection file ourselves.
     write_connection_file(fname=conn_file, kernel_name=spec_name)
 
-    pid = _spawn(spec, conn_file, kdir)
+    pid = _spawn(spec, conn_file, kdir, work_dir)
 
     meta = {
         "kernel_id": kernel_id,
@@ -86,13 +96,14 @@ def launch(spec_name: str) -> str:
         "pid": pid,
         "started_at": _now(),
         "connection_file": conn_file,
+        "cwd": work_dir,
         "bootstrapped": False,
     }
     state.save_meta(kernel_id, meta)
     return kernel_id
 
 
-def _spawn(spec, conn_file: str, kdir) -> int:
+def _spawn(spec, conn_file: str, kdir, work_dir: str) -> int:
     """Spawn the kernel process detached; return its pid."""
     import os
 
@@ -110,7 +121,7 @@ def _spawn(spec, conn_file: str, kdir) -> int:
         stderr=subprocess.STDOUT,
         stdin=subprocess.DEVNULL,
         start_new_session=True,  # detach: survives parent exit
-        cwd=str(kdir),
+        cwd=work_dir,
     )
     return proc.pid
 
