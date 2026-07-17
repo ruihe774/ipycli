@@ -1,0 +1,24 @@
+[project]
+name = "ipycli"
+version = "0.1.0"
+description = "A CLI for LLM coding agents to execute code with IPython kernels"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jupyter-client>=8.0",
+    "ipykernel>=6.0",
+    "matplotlib>=3.5",
+    "matplotlib-inline>=0.1",
+    "nbformat>=5.0",
+    "typer>=0.12",
+]
+
+[project.scripts]
+ipycli = "ipycli.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ipycli"]
