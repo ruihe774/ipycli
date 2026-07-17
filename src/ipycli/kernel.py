@@ -23,7 +23,13 @@ from . import state
 # How long to wait for a freshly launched kernel to become ready.
 READY_TIMEOUT = 60.0
 # How long a single code block may run before we give up draining messages.
+# This is the default for foreground (blocking) execution; ``--timeout`` on
+# ``execute-code`` overrides it.
 EXEC_TIMEOUT = 300.0
+# Default per-block timeout for background execution. A detached background job
+# is meant for long-running work, so it gets a much larger budget than the
+# interactive foreground default.
+BG_EXEC_TIMEOUT = 3600.0
 
 # Bootstrap run once per kernel so matplotlib figures arrive as PNG display
 # data that we can capture to disk automatically.
@@ -176,11 +182,14 @@ def execute(
     silent: bool = False,
     client=None,
     block_id: Optional[str] = None,
+    timeout: Optional[float] = None,
 ) -> dict[str, Any]:
     """Execute ``code`` on the kernel and return a structured result.
 
     When ``silent`` is False the block is recorded to history. A ``block_id``
-    is generated if not provided.
+    is generated if not provided. ``timeout`` caps how long the block may run
+    before its status is reported as ``"timeout"``; it defaults to
+    :data:`EXEC_TIMEOUT`.
     """
     own_client = client is None
     if own_client:
@@ -189,7 +198,7 @@ def execute(
         if not silent:
             _ensure_bootstrapped(kernel_id, client)
         bid = block_id or state.new_id()
-        result = _run(client, code, kernel_id, bid, silent=silent)
+        result = _run(client, code, kernel_id, bid, silent=silent, timeout=timeout)
         if not silent:
             block = {
                 "block_id": bid,
@@ -214,6 +223,7 @@ def _run(
     block_id: str,
     silent: bool,
     store_history: Optional[bool] = None,
+    timeout: Optional[float] = None,
 ) -> dict[str, Any]:
     """Send one execute request and drain its messages until idle.
 
@@ -235,7 +245,8 @@ def _run(
     execution_count: Optional[int] = None
     plot_n = 0
 
-    deadline = time.monotonic() + EXEC_TIMEOUT
+    exec_timeout = EXEC_TIMEOUT if timeout is None else timeout
+    deadline = time.monotonic() + exec_timeout
     idle = False
     while not idle:
         remaining = deadline - time.monotonic()
@@ -439,6 +450,8 @@ def _kill(pid: int) -> None:
 
 def restart(kernel_id: str) -> None:
     """Restart the kernel (fresh process, same id) and clear its history."""
+    import os
+
     meta = state.load_meta(kernel_id)
     if meta is None:
         raise KernelError(f"No such kernel: {kernel_id}")
@@ -452,7 +465,8 @@ def restart(kernel_id: str) -> None:
 
     ksm = KernelSpecManager()
     spec = ksm.get_kernel_spec(meta["spec"])
-    pid = _spawn(spec, conn_file, kdir)
+    work_dir = meta.get("cwd") or os.getcwd()
+    pid = _spawn(spec, conn_file, kdir, work_dir)
 
     meta.update(
         {

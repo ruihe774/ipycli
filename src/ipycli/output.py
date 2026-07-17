@@ -90,5 +90,26 @@ def history(data: dict) -> str:
     return "\n".join(parts)
 
 
+def jobs(data: dict) -> str:
+    job_list = data.get("jobs", [])
+    if not job_list:
+        return "No background jobs."
+    parts = []
+    for j in job_list:
+        head = f"=== job {j['job_id']} status={j.get('status')}"
+        if j.get("reaped"):
+            head += " (reaped)"
+        head += " ==="
+        parts.append(head)
+        if j.get("error"):
+            parts.append(f"  error: {j['error']}")
+        for b in j.get("results") or []:
+            parts.append(f"  [{b.get('block_id')}] status={b.get('status')}")
+            body = _fmt_outputs(b.get("outputs", []), b.get("plots", []), indent="    ")
+            if body:
+                parts.append(body)
+    return "\n".join(parts)
+
+
 def message(data: dict) -> str:
     return data.get("message", json.dumps(data))

@@ -184,3 +184,70 @@ def clear_history(kernel_id: str) -> None:
                 f.unlink()
             except OSError:
                 pass
+
+
+# --- background jobs -------------------------------------------------------
+#
+# A ``execute-code --background`` invocation records a *job* here and returns
+# immediately; a detached worker process carries out the execution and updates
+# the job's status. ``poll-background`` reads these files to monitor and reap.
+
+
+def jobs_dir(kernel_id: str) -> Path:
+    return kernel_dir(kernel_id) / "jobs"
+
+
+def job_path(kernel_id: str, job_id: str) -> Path:
+    return jobs_dir(kernel_id) / f"{job_id}.json"
+
+
+def save_job(kernel_id: str, job: dict[str, Any]) -> None:
+    d = jobs_dir(kernel_id)
+    d.mkdir(parents=True, exist_ok=True)
+    _write_json(d / f"{job['job_id']}.json", job)
+
+
+def load_job(kernel_id: str, job_id: str) -> Optional[dict[str, Any]]:
+    path = job_path(kernel_id, job_id)
+    if not path.exists():
+        return None
+    return _read_json(path, None)
+
+
+def list_jobs(kernel_id: str) -> list[dict[str, Any]]:
+    d = jobs_dir(kernel_id)
+    if not d.exists():
+        return []
+    out: list[dict[str, Any]] = []
+    for entry in sorted(d.glob("*.json")):
+        job = _read_json(entry, None)
+        if job is not None:
+            out.append(job)
+    return out
+
+
+def remove_job(kernel_id: str, job_id: str) -> None:
+    """Delete a job's record and worker log (reap it)."""
+    d = jobs_dir(kernel_id)
+    for name in (f"{job_id}.json", f"{job_id}.log"):
+        try:
+            (d / name).unlink()
+        except OSError:
+            pass
+
+
+def running_jobs(kernel_id: str) -> list[dict[str, Any]]:
+    """Return jobs that are still executing.
+
+    A job counts as running while its status is ``"running"`` and its worker is
+    either still starting up (pid not yet claimed) or alive. A worker that died
+    without reporting completion is *not* counted, so it never blocks new work.
+    """
+    out: list[dict[str, Any]] = []
+    for job in list_jobs(kernel_id):
+        if job.get("status") != "running":
+            continue
+        pid = int(job.get("pid", 0) or 0)
+        if pid <= 0 or pid_alive(pid):
+            out.append(job)
+    return out

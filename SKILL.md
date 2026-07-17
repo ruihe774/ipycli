@@ -40,7 +40,24 @@ Run it with `ipycli <command>`. It's installed on PATH.
    Each block gets a unique `block_id`. State carries over: a later block sees
    `x` from an earlier one.
 
+   By default `execute-code` **blocks** until the code finishes (up to
+   `--timeout`/`-t` seconds, default 300). For long-running work, add
+   `--background`/`-b`: the command returns a `job_id` immediately and the code
+   runs detached (default timeout 3600s). Collect the result later with
+   `poll-background`.
+
 3. **Inspect / manage** as needed (see command table).
+
+## Background execution
+
+- `execute-code -b` runs detached and prints `{job_id, block_ids, status: "running"}`.
+- `poll-background` reports each job's status. A **finished** job includes its
+  block `results` and is then **reaped** (removed) — pass `--keep` to leave it,
+  or `--wait` to block until it finishes. Target one job with `--job-id`/`-j`.
+- **Only one execution runs at a time per kernel.** An IPython kernel executes
+  requests serially, so background code shares the same kernel and state as
+  everything else. While a background job is in flight, other `execute-code`
+  calls on that kernel are **refused** until you reap it with `poll-background`.
 
 ## Kernel targeting
 
@@ -55,7 +72,8 @@ kernels running and no `-k`, the command errors — pass `-k <id>` explicitly.
 | `list-kernelspecs` | Installed kernel specs (name, language) |
 | `launch-kernel [SPEC]` | Launch detached kernel (default `python3`); returns `kernel_id` |
 | `list-kernels` | Running kernels (dead ones pruned automatically) |
-| `execute-code [-c CODE \| FILE] [-k ID]` | Run code from `-c`, a `.py`/`.ipynb` file, or stdin |
+| `execute-code [-c CODE \| FILE] [-k ID] [-t SECS] [-b]` | Run code from `-c`, a `.py`/`.ipynb` file, or stdin |
+| `poll-background [-k ID] [-j JOB] [--wait]` | Monitor and reap background jobs (from `execute-code -b`) |
 | `list-variables [-k ID]` | User-defined variables: name, type, repr preview |
 | `restart-kernel [-k ID]` | Fresh kernel process, **clears all history & variables** |
 | `stop-kernel [-k ID]` | Terminate and deregister the kernel |
@@ -93,6 +111,25 @@ Field types below; `?` marks nullable/optional.
 }
 ```
 Note: the top-level `execute-code` payload also carries `"code"` and `"ts"` fields (from history) when a single block is returned; the `blocks` array entries do too.
+
+With `--background`, `execute-code` instead returns immediately with:
+```jsonc
+{"kernel_id": "...", "job_id": "6a3f8178", "status": "running", "block_ids": ["c4e21f9b"], "timeout": 3600.0, "message": "..."}
+```
+
+**`poll-background`** — `{"kernel_id": "...", "jobs": [job, ...]}` where each job is:
+```jsonc
+{
+  "job_id": "6a3f8178",
+  "status": "running",         // "running" | "done" | "error" | "failed"
+  "block_ids": ["c4e21f9b"],
+  "started_at": "...", "finished_at": "..." /* | null */,
+  "timeout": 3600.0,
+  "results": [block, ...],     // null while running; block objects once finished
+  "error": null,               // string on "error"/"failed"
+  "reaped": true               // true if this call removed the job's record
+}
+```
 
 **`list-variables`** — array of:
 ```jsonc
