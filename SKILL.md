@@ -62,6 +62,54 @@ kernels running and no `-k`, the command errors — pass `-k <id>` explicitly.
 | `show-history [-k ID]` | All run blocks with ids, code, and outputs |
 | `export-history OUT.ipynb --ids a,b,c [-k ID]` | Export selected blocks to a `.ipynb` |
 
+## JSON output schemas
+
+Field types below; `?` marks nullable/optional.
+
+**`list-kernelspecs`** — array of:
+```jsonc
+{"name": "python3", "display_name": "Python 3", "language": "python", "resource_dir": "/path"}
+```
+
+**`launch-kernel`** — one object:
+```jsonc
+{"kernel_id": "a1b2c3d4", "spec": "python3", "language": "python", "pid": 12345, "started_at": "2026-07-16T12:00:00+00:00", "cwd": "/path"}
+```
+
+**`list-kernels`** — array of the same object shape as `launch-kernel`.
+
+**`execute-code`** — a single block object if one block ran, or `{"kernel_id": ..., "blocks": [block, ...]}` for multiple (e.g. from a `.ipynb`/multi-cell file):
+```jsonc
+{
+  "block_id": "e5f6a7b8",
+  "status": "ok",              // "ok" | "error" | "timeout"
+  "execution_count": 3,        // int | null
+  "outputs": [
+    {"type": "stream", "name": "stdout", "text": "..."},
+    {"type": "execute_result", "text": "..."},   // or "display_data"
+    {"type": "error", "ename": "ValueError", "evalue": "...", "traceback": ["..."]}
+  ],
+  "plots": ["/path/to/plot0.png"]
+}
+```
+Note: the top-level `execute-code` payload also carries `"code"` and `"ts"` fields (from history) when a single block is returned; the `blocks` array entries do too.
+
+**`list-variables`** — array of:
+```jsonc
+{"name": "df", "type": "DataFrame", "repr": "<preview string>"}
+```
+
+**`restart-kernel` / `stop-kernel`** — `{"kernel_id": "...", "message": "..."}`
+
+**`show-history`** — `{"kernel_id": "...", "blocks": [block, ...]}` where each block is:
+```jsonc
+{"block_id": "...", "code": "...", "status": "ok", "execution_count": 3, "outputs": [...], "plots": [...], "ts": "2026-07-16T12:00:00+00:00"}
+```
+
+**`export-history`** — `{"path": "session.ipynb", "cells": 3, "message": "Exported 3 cell(s) to session.ipynb."}`
+
+**Errors** (stderr, any command) — `{"error": "message"}`
+
 ## Plots
 
 Matplotlib and R figures are **captured automatically** — no `savefig` needed. When a
