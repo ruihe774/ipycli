@@ -316,7 +316,9 @@ def show_history(kernel_id: Optional[str] = KernelIdOpt, plain: bool = PlainOpt)
 @app.command("export-history")
 def export_history(
     out_path: str = typer.Argument(..., help="Output .ipynb path."),
-    ids: str = typer.Option(..., "--ids", help="Comma-separated block ids to export."),
+    ids: Optional[str] = typer.Option(
+        None, "--ids", help="Comma-separated block ids to export. Defaults to all blocks."
+    ),
     kernel_id: Optional[str] = KernelIdOpt,
     plain: bool = PlainOpt,
 ):
@@ -325,7 +327,10 @@ def export_history(
         kid = state.resolve_kernel_id(kernel_id)
     except state.StateError as exc:
         _fail(str(exc), plain)
-    block_ids = [i.strip() for i in ids.split(",") if i.strip()]
+    if ids is None:
+        block_ids = [b["block_id"] for b in state.load_history(kid)]
+    else:
+        block_ids = [i.strip() for i in ids.split(",") if i.strip()]
     if not block_ids:
         _fail("No block ids given (use --ids a,b,c).", plain)
     try:

@@ -78,7 +78,7 @@ kernels running and no `-k`, the command errors — pass `-k <id>` explicitly.
 | `restart-kernel [-k ID]` | Fresh kernel process, **clears all history & variables** |
 | `stop-kernel [-k ID]` | Terminate and deregister the kernel |
 | `show-history [-k ID]` | All run blocks with ids, code, and outputs |
-| `export-history OUT.ipynb --ids a,b,c [-k ID]` | Export selected blocks to a `.ipynb` |
+| `export-history OUT.ipynb [--ids a,b,c] [-k ID]` | Export selected blocks to a `.ipynb` |
 
 ## JSON output schemas
 
