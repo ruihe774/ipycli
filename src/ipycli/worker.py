@@ -13,8 +13,6 @@ outputs, records history exactly as a foreground run would, and updates the job
 file so ``poll-background`` can monitor and reap it.
 """
 
-from __future__ import annotations
-
 import os
 import subprocess
 import sys

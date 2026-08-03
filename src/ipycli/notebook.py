@@ -1,7 +1,6 @@
 """Reading code input (-c / file / stdin) and exporting history to a notebook."""
 
-from __future__ import annotations
-
+import base64
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -70,8 +69,6 @@ def _outputs_to_nb(outputs: list[dict[str, Any]], plots: list[str]) -> list[Any]
                 )
             )
     # Attach captured plots as image outputs.
-    import base64
-
     for plot in plots:
         p = Path(plot)
         if p.exists():

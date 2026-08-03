@@ -12,10 +12,9 @@ under a state directory (``~/.ipycli`` by default, overridable with
         kernel.log        # kernel stdout/stderr
 """
 
-from __future__ import annotations
-
 import json
 import os
+import shutil
 import uuid
 from pathlib import Path
 from typing import Any, Optional
@@ -125,8 +124,6 @@ def list_metas(only_alive: bool = True, prune: bool = True) -> list[dict[str, An
 
 def remove_kernel(kernel_id: str) -> None:
     """Delete a kernel's entire state directory."""
-    import shutil
-
     d = kernel_dir(kernel_id)
     if d.exists():
         shutil.rmtree(d, ignore_errors=True)

@@ -6,15 +6,17 @@ file, spawn the kernelspec's ``argv`` with ``start_new_session=True``, and
 reconnect from later invocations via a ``BlockingKernelClient``.
 """
 
-from __future__ import annotations
-
 import base64
+import json
+import os
+import signal
 import subprocess
 import time
 from datetime import datetime, timezone
 from queue import Empty
 from typing import Any, Optional
 
+from jupyter_client import BlockingKernelClient
 from jupyter_client.connect import write_connection_file
 from jupyter_client.kernelspec import KernelSpecManager, NoSuchKernel
 
@@ -74,8 +76,6 @@ def launch(spec_name: str, cwd: Optional[str] = None) -> str:
     ``cwd`` is the working directory the kernel process runs in; defaults to
     the caller's current directory.
     """
-    import os
-
     ksm = KernelSpecManager()
     try:
         spec = ksm.get_kernel_spec(spec_name)
@@ -111,8 +111,6 @@ def launch(spec_name: str, cwd: Optional[str] = None) -> str:
 
 def _spawn(spec, conn_file: str, kdir, work_dir: str) -> int:
     """Spawn the kernel process detached; return its pid."""
-    import os
-
     argv = [
         arg.replace("{connection_file}", conn_file) for arg in spec.argv
     ]
@@ -137,8 +135,6 @@ def _spawn(spec, conn_file: str, kdir, work_dir: str) -> int:
 
 def connect(kernel_id: str, ready_timeout: float = READY_TIMEOUT):
     """Return a started, ready BlockingKernelClient for ``kernel_id``."""
-    from jupyter_client import BlockingKernelClient
-
     meta = state.load_meta(kernel_id)
     if meta is None:
         raise KernelError(f"No such kernel: {kernel_id}")
@@ -417,8 +413,6 @@ def list_variables(kernel_id: str) -> list[dict[str, Any]]:
     if language == "r":
         return _parse_r_vars(text)
 
-    import json
-
     try:
         return json.loads(text.strip() or "[]")
     except json.JSONDecodeError:
@@ -429,9 +423,6 @@ def list_variables(kernel_id: str) -> list[dict[str, Any]]:
 
 
 def _kill(pid: int) -> None:
-    import os
-    import signal
-
     if not state.pid_alive(pid):
         return
     try:
@@ -450,8 +441,6 @@ def _kill(pid: int) -> None:
 
 def restart(kernel_id: str) -> None:
     """Restart the kernel (fresh process, same id) and clear its history."""
-    import os
-
     meta = state.load_meta(kernel_id)
     if meta is None:
         raise KernelError(f"No such kernel: {kernel_id}")

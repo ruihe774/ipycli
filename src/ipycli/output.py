@@ -1,7 +1,5 @@
 """Output formatting: JSON (default, for agents) or plain human-readable text."""
 
-from __future__ import annotations
-
 import json
 import sys
 from typing import Any

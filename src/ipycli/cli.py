@@ -5,8 +5,7 @@ defaults to JSON output (for reliable machine parsing) and accepts ``--plain``
 for human-readable text.
 """
 
-from __future__ import annotations
-
+import json
 import sys
 import time
 from typing import Optional
@@ -33,8 +32,6 @@ def _fail(message: str, plain: bool) -> None:
     if plain:
         print(f"error: {message}", file=sys.stderr)
     else:
-        import json
-
         print(json.dumps({"error": message}, indent=2), file=sys.stderr)
     raise typer.Exit(code=1)
 
