@@ -91,8 +91,10 @@ Field types below; `?` marks nullable/optional.
 
 **`launch-kernel`** — one object:
 ```jsonc
-{"kernel_id": "a1b2c3d4", "spec": "python3", "language": "python", "pid": 12345, "started_at": "2026-07-16T12:00:00+00:00", "cwd": "/path"}
+{"kernel_id": "a1b2c3d4", "spec": "python3", "language": "python", "pid": 12345, "started_at": "2026-07-16T12:00:00+00:00", "cwd": "/path", "connection_file": "/path/to/connection.json"}
 ```
+`connection_file` is the Jupyter connection file (ports + HMAC key); use it to attach
+an external client, e.g. `jupyter console --existing <connection_file>`.
 
 **`list-kernels`** — array of the same object shape as `launch-kernel`.
 
@@ -110,7 +112,6 @@ Field types below; `?` marks nullable/optional.
   "plots": ["/path/to/plot0.png"]
 }
 ```
-Note: the top-level `execute-code` payload also carries `"code"` and `"ts"` fields (from history) when a single block is returned; the `blocks` array entries do too.
 
 With `--background`, `execute-code` instead returns immediately with:
 ```jsonc

@@ -36,6 +36,22 @@ def _fail(message: str, plain: bool) -> None:
     raise typer.Exit(code=1)
 
 
+_META_INTERNAL_FIELDS = {"bootstrapped", "alive"}
+
+
+def _public_meta(meta: dict) -> dict:
+    """Strip internal-only bookkeeping fields before printing kernel metadata."""
+    return {k: v for k, v in meta.items() if k not in _META_INTERNAL_FIELDS}
+
+
+_JOB_INTERNAL_FIELDS = {"kernel_id", "pid", "blocks_src"}
+
+
+def _public_job(job: dict) -> dict:
+    """Strip internal-only bookkeeping fields before printing a background job."""
+    return {k: v for k, v in job.items() if k not in _JOB_INTERNAL_FIELDS}
+
+
 @app.command("list-kernelspecs")
 def list_kernelspecs(plain: bool = PlainOpt):
     """List the installed kernel specs."""
@@ -56,13 +72,14 @@ def launch_kernel(
     except kernel.KernelError as exc:
         _fail(str(exc), plain)
     meta = state.load_meta(kernel_id)
-    output.emit(meta, plain, output.launched)
+    output.emit(_public_meta(meta), plain, output.launched)
 
 
 @app.command("list-kernels")
 def list_kernels(plain: bool = PlainOpt):
     """List running kernels."""
-    output.emit(state.list_metas(only_alive=True), plain, output.kernels)
+    metas = [_public_meta(m) for m in state.list_metas(only_alive=True)]
+    output.emit(metas, plain, output.kernels)
 
 
 @app.command("execute-code")
@@ -226,7 +243,7 @@ def poll_background(
 
     reported = []
     for j in snapshot():
-        entry = dict(j)
+        entry = _public_job(j)
         if j["status"] != "running" and not keep:
             state.remove_job(kid, j["job_id"])
             entry["reaped"] = True
