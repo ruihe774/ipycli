@@ -10,13 +10,43 @@ plots) is persisted under `~/.ipycli/` (override with `IPYCLI_HOME`).
 Every command prints **JSON** by default (easy to parse); pass `--plain` for
 human-readable output.
 
-## Install / run
+## Install
+
+Install `ipycli` onto your `PATH` with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv sync
-uv run python -m ipykernel install --user   # ensure a python3 kernel spec exists
-uv run ipycli --help
+uv tool install .                           # from a checkout of this repo
 ```
+
+Then ensure a `python3` kernel spec is registered (needed once per Python env):
+
+```bash
+uv tool run --from ipycli python -m ipykernel install --user
+```
+
+Verify:
+
+```bash
+ipycli --help
+```
+
+If you'd rather not install globally, run everything via `uv run` from a
+checkout instead (`uv sync` once, then prefix commands with `uv run`).
+
+### Enabling the agent skill
+
+This repo ships a [`SKILL.md`](SKILL.md) that teaches coding agents (e.g.
+Claude Code) how to drive `ipycli`. To make it available:
+
+```bash
+mkdir -p ~/.claude/skills/ipycli
+cp SKILL.md ~/.claude/skills/ipycli/SKILL.md
+```
+
+Or, to scope it to a single project instead, copy it to
+`<project>/.claude/skills/ipycli/SKILL.md`. The skill only takes effect once
+`ipycli` itself is on `PATH` (see Install above) — it documents the CLI, it
+doesn't install it.
 
 ## Commands
 
@@ -37,13 +67,13 @@ uv run ipycli --help
 ## Example
 
 ```bash
-KID=$(uv run ipycli launch-kernel python3 | jq -r .kernel_id)
-uv run ipycli execute-code -c "x = 21 * 2; print(x)"
-uv run ipycli execute-code -c "import matplotlib.pyplot as plt; plt.plot([1,2,3]); plt.show()"
-uv run ipycli list-variables
-uv run ipycli show-history
-uv run ipycli export-history out.ipynb --ids <id1>,<id2>
-uv run ipycli stop-kernel
+KID=$(ipycli launch-kernel python3 | jq -r .kernel_id)
+ipycli execute-code -c "x = 21 * 2; print(x)"
+ipycli execute-code -c "import matplotlib.pyplot as plt; plt.plot([1,2,3]); plt.show()"
+ipycli list-variables
+ipycli show-history
+ipycli export-history out.ipynb --ids <id1>,<id2>
+ipycli stop-kernel
 ```
 
 Plots are captured automatically: any figure a block produces is saved as a PNG
