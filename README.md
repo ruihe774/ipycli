@@ -55,7 +55,8 @@ doesn't install it.
 | `list-kernelspecs` | List installed kernel specs |
 | `launch-kernel [SPEC]` | Launch a detached kernel (default `python3`); prints a unique id |
 | `list-kernels` | List running kernels |
-| `execute-code [-c CODE \| FILE] [-k ID]` | Execute code from `-c`, a `.py`/`.ipynb` file, or stdin |
+| `execute-code [-c CODE \| FILE] [-k ID] [-t SECS] [-b]` | Execute code from `-c`, a `.py`/`.ipynb` file, or stdin; `-b`/`--background` runs it detached and returns a job id immediately |
+| `poll-background [-k ID] [-j JOB] [--wait] [--keep]` | Monitor and reap jobs started with `execute-code --background` |
 | `list-variables [-k ID]` | List variables defined in the kernel |
 | `restart-kernel [-k ID]` | Restart the kernel and clear history |
 | `stop-kernel [-k ID]` | Stop the kernel |
@@ -75,6 +76,18 @@ ipycli show-history
 ipycli export-history out.ipynb --ids <id1>,<id2>
 ipycli stop-kernel
 ```
+
+For long-running code, run it in the background and poll for completion
+instead of blocking the CLI invocation:
+
+```bash
+JOB=$(ipycli execute-code -c "long_running_job()" --background | jq -r .job_id)
+ipycli poll-background --job-id $JOB --wait
+```
+
+Only one execution (foreground or background) runs per kernel at a time; a
+second `execute-code` call is refused while a background job is still
+in flight, until it's reaped with `poll-background`.
 
 Plots are captured automatically: any figure a block produces is saved as a PNG
 under `~/.ipycli/kernels/<id>/outputs/` and its path is returned in the block's
