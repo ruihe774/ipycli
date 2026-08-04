@@ -36,6 +36,8 @@ def _fmt_outputs(outputs: list[dict], plots: list[str], indent: str = "  ") -> s
 
 
 def kernelspecs(data: list[dict]) -> str:
+    if not data:
+        return "No kernelspecs installed."
     return "\n".join(
         f"{s['name']:20} {s['display_name']}  ({s['language']})" for s in data
     )
