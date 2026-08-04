@@ -12,6 +12,8 @@ under a state directory (``~/.ipycli`` by default, overridable with
         kernel.log        # kernel stdout/stderr
 """
 
+import contextlib
+import fcntl
 import json
 import os
 import shutil
@@ -162,14 +164,35 @@ def history_path(kernel_id: str) -> Path:
     return kernel_dir(kernel_id) / "history.json"
 
 
+@contextlib.contextmanager
+def _history_lock(kernel_id: str):
+    """Exclusive cross-process lock guarding history.json's read-modify-write.
+
+    Concurrent foreground ``execute-code`` invocations against the same
+    kernel aren't otherwise prevented, and without this lock two processes
+    can both load the same history list before either writes it back,
+    silently dropping one block's recorded entry even though the kernel
+    itself executed it.
+    """
+    lock_path = kernel_dir(kernel_id) / "history.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
 def load_history(kernel_id: str) -> list[dict[str, Any]]:
     return _read_json(history_path(kernel_id), [])
 
 
 def append_history(kernel_id: str, block: dict[str, Any]) -> None:
-    history = load_history(kernel_id)
-    history.append(block)
-    _write_json(history_path(kernel_id), history)
+    with _history_lock(kernel_id):
+        history = load_history(kernel_id)
+        history.append(block)
+        _write_json(history_path(kernel_id), history)
 
 
 def clear_history(kernel_id: str) -> None:
