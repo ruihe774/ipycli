@@ -341,8 +341,6 @@ def __ipycli_list_vars():
             continue
         if isinstance(val, __ipycli_types.ModuleType):
             continue
-        if callable(val) and getattr(val, '__module__', None) in (None, '__main__') and name.startswith('__ipycli'):
-            continue
         try:
             r = repr(val)
         except Exception:
