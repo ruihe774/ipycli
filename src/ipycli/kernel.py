@@ -248,6 +248,7 @@ def _run(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             status = "timeout"
+            _interrupt(kernel_id)
             break
         try:
             msg = client.get_iopub_msg(timeout=min(remaining, 1.0))
@@ -420,6 +421,26 @@ def list_variables(kernel_id: str) -> list[dict[str, Any]]:
 
 
 # --- lifecycle -------------------------------------------------------------
+
+
+def _interrupt(kernel_id: str) -> None:
+    """Send SIGINT to the kernel process so timed-out code actually stops.
+
+    Without this, a block that hits its deadline keeps running in the kernel
+    after we give up draining its messages, and every subsequent
+    execute-request on that kernel silently queues behind it (ipykernel
+    processes the shell channel strictly serially).
+    """
+    meta = state.load_meta(kernel_id)
+    if meta is None:
+        return
+    pid = int(meta.get("pid", -1))
+    if pid <= 0 or not state.pid_alive(pid):
+        return
+    try:
+        os.kill(pid, signal.SIGINT)
+    except ProcessLookupError:
+        pass
 
 
 def _kill(pid: int) -> None:
