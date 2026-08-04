@@ -31,7 +31,18 @@ ipycli --help
 ```
 
 If you'd rather not install globally, run everything via `uv run` from a
-checkout instead (`uv sync` once, then prefix commands with `uv run`).
+checkout instead (`uv sync` once, then prefix commands with `uv run`). In that
+case, register the kernel spec against the checkout's own venv rather than
+with `uv tool run`:
+
+```bash
+uv run python -m ipykernel install --sys-prefix --name python3
+```
+
+(Using `uv tool run --from ipycli python -m ipykernel install --user` here
+would register a spec pointing at a separate, ephemeral `uv tool` venv instead
+of the checkout's `.venv` — the kernel would then fail to launch with `No
+module named ipykernel_launcher`.)
 
 ### Enabling the agent skill
 
