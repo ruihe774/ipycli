@@ -248,7 +248,7 @@ def _run(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             status = "timeout"
-            _interrupt(kernel_id)
+            interrupt(kernel_id)
             break
         try:
             msg = client.get_iopub_msg(timeout=min(remaining, 1.0))
@@ -421,11 +421,14 @@ def list_variables(kernel_id: str) -> list[dict[str, Any]]:
 # --- lifecycle -------------------------------------------------------------
 
 
-def _interrupt(kernel_id: str) -> None:
-    """Send SIGINT to the kernel process so timed-out code actually stops.
+def interrupt(kernel_id: str) -> None:
+    """Send SIGINT to the kernel process so running code actually stops.
 
-    Without this, a block that hits its deadline keeps running in the kernel
-    after we give up draining its messages, and every subsequent
+    Used both when a block hits its timeout deadline and when a caller
+    explicitly wants to interrupt code that's currently executing (a
+    foreground run cancelled with Ctrl-C, or a background job stopped via
+    ``poll-background --interrupt``). Without this, the code keeps running in
+    the kernel after we give up draining its messages, and every subsequent
     execute-request on that kernel silently queues behind it (ipykernel
     processes the shell channel strictly serially).
     """

@@ -1,5 +1,7 @@
 """execute-code --background and poll-background."""
 
+import time
+
 
 def test_background_job_runs_and_reports_result(run, kernel):
     proc, data = run.json(
@@ -58,6 +60,43 @@ def test_poll_background_unknown_job_id_errors(run, kernel):
     proc, data = run.json("poll-background", "-k", kernel, "--job-id", "deadbeef")
     assert proc.returncode != 0
     assert "deadbeef" in data["error"]
+
+
+def test_poll_background_interrupt_stops_running_job(run, kernel):
+    proc, data = run.json(
+        "execute-code", "-c", "import time; time.sleep(30)", "-k", kernel, "--background"
+    )
+    assert proc.returncode == 0, proc.stderr
+    job_id = data["job_id"]
+
+    # Give the worker a moment to actually submit the execute_request before
+    # we interrupt, so we know it's the sleep that gets interrupted.
+    time.sleep(1)
+
+    proc, data = run.json(
+        "poll-background", "-k", kernel, "--job-id", job_id, "--interrupt", "--wait"
+    )
+    assert proc.returncode == 0, proc.stderr
+    job = next(j for j in data["jobs"] if j["job_id"] == job_id)
+    assert job["reaped"] is True
+    assert job["results"][0]["status"] == "error"
+    assert job["results"][0]["outputs"][0]["ename"] == "KeyboardInterrupt"
+
+    # Kernel is interrupted but still usable for the next block.
+    proc, data = run.json("execute-code", "-c", "1 + 1", "-k", kernel)
+    assert proc.returncode == 0, proc.stderr
+    assert data["status"] == "ok"
+
+
+def test_poll_background_interrupt_without_running_job_is_a_noop(run, kernel):
+    proc, data = run.json("execute-code", "-c", "1", "-k", kernel, "--background")
+    job_id = data["job_id"]
+    run.json("poll-background", "-k", kernel, "--job-id", job_id, "--wait")
+
+    # No running job left to target; --interrupt shouldn't touch the kernel.
+    proc, data = run.json("poll-background", "-k", kernel, "--interrupt")
+    assert proc.returncode == 0, proc.stderr
+    assert data["jobs"] == []
 
 
 def test_concurrent_execute_refused_while_background_job_running(run, kernel):

@@ -6,6 +6,11 @@ so they don't depend on each other's state.
 """
 
 import json
+import os
+import signal
+import subprocess
+import sys
+import time
 
 import nbformat
 
@@ -150,4 +155,28 @@ def test_execute_code_timeout_status(run, kernel):
     # Kernel is interrupted but still usable for the next block.
     proc, data = run.json("execute-code", "-c", "1 + 1", "-k", kernel)
     assert proc.returncode == 0, proc.stderr
+    assert data["status"] == "ok"
+
+
+def test_execute_code_ctrl_c_interrupts_kernel(run, kernel):
+    """Ctrl-C on the foreground CLI process forwards SIGINT to the kernel."""
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "ipycli", "execute-code", "-c",
+         "import time; time.sleep(30)", "-k", kernel],
+        env={**os.environ, "IPYCLI_HOME": str(run.home)},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    time.sleep(1)  # let the execute_request actually reach the kernel first
+    os.kill(proc.pid, signal.SIGINT)
+    _, stderr = proc.communicate(timeout=15)
+
+    assert proc.returncode != 0
+    err = json.loads(stderr)
+    assert "Interrupted" in err["error"]
+
+    # Kernel is interrupted but still usable for the next block.
+    proc2, data = run.json("execute-code", "-c", "1 + 1", "-k", kernel)
+    assert proc2.returncode == 0, proc2.stderr
     assert data["status"] == "ok"

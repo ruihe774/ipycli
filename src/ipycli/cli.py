@@ -134,6 +134,11 @@ def execute_code(
     try:
         for src in blocks_src:
             results.append(kernel.execute(kid, src, client=client, timeout=timeout))
+    except KeyboardInterrupt:
+        # The kernel is a detached process in its own session, so Ctrl-C here
+        # only hits this CLI process — forward it so the kernel actually stops.
+        kernel.interrupt(kid)
+        _fail(f"Interrupted; sent SIGINT to kernel {kid} to stop the running code.", plain)
     except kernel.KernelError as exc:
         _fail(str(exc), plain)
     finally:
@@ -201,6 +206,11 @@ def poll_background(
     job_id: Optional[str] = typer.Option(
         None, "--job-id", "-j", help="Only report/reap this job."
     ),
+    interrupt: bool = typer.Option(
+        False, "--interrupt",
+        help="Send SIGINT to the kernel to stop the targeted job's currently "
+        "running block before reporting.",
+    ),
     wait: bool = typer.Option(
         False, "--wait", help="Block until the targeted job(s) finish before reporting."
     ),
@@ -215,7 +225,9 @@ def poll_background(
     """Monitor and reap background executions started with 'execute-code --background'.
 
     Reports each job's status; finished jobs include their block results and are
-    reaped (removed) unless --keep is given.
+    reaped (removed) unless --keep is given. --interrupt sends SIGINT to the
+    kernel to stop the block currently running, if the targeted job is still
+    running.
     """
     try:
         kid = state.resolve_kernel_id(kernel_id)
@@ -224,6 +236,13 @@ def poll_background(
 
     if job_id is not None and state.load_job(kid, job_id) is None:
         _fail(f"No such background job: {job_id}", plain)
+
+    if interrupt:
+        running = state.running_jobs(kid)
+        if job_id is not None:
+            running = [j for j in running if j.get("job_id") == job_id]
+        if running:
+            kernel.interrupt(kid)
 
     def snapshot() -> list[dict]:
         jobs = state.list_jobs(kid)

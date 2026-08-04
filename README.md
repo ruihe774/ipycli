@@ -67,12 +67,12 @@ doesn't install it.
 | `launch-kernel [SPEC]` | Launch a detached kernel (default `python3`); prints a unique id |
 | `list-kernels` | List running kernels |
 | `execute-code [-c CODE \| FILE] [-k ID] [-t SECS] [-b]` | Execute code from `-c`, a `.py`/`.ipynb` file, or stdin; `-b`/`--background` runs it detached and returns a job id immediately |
-| `poll-background [-k ID] [-j JOB] [--wait] [--keep]` | Monitor and reap jobs started with `execute-code --background` |
+| `poll-background [-k ID] [-j JOB] [--wait] [--keep] [--interrupt]` | Monitor and reap jobs started with `execute-code --background` |
 | `list-variables [-k ID]` | List variables defined in the kernel |
 | `restart-kernel [-k ID]` | Restart the kernel and clear history |
 | `stop-kernel [-k ID]` | Stop the kernel |
 | `show-history [-k ID]` | Show run code blocks with their ids and outputs |
-| `export-history OUT.ipynb --ids a,b [-k ID]` | Export selected blocks to a notebook |
+| `export-history OUT.ipynb [--ids a,b] [-k ID]` | Export selected blocks to a notebook |
 
 `--kernel-id`/`-k` may be omitted when exactly one kernel is running.
 

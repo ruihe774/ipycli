@@ -13,6 +13,7 @@ CLI for persistent, detached IPython kernels: state (vars/imports) survives acro
 - Code raising inside the kernel is NOT a CLI error: exit 0, block JSON has `"status": "error"` + `ename`/`evalue`/`traceback`. **Always check `status`, not exit code.**
 - `--kernel-id`/`-k`: omit only if exactly one kernel is running (auto-used). With 0 or 2+ kernels, omitting errors — pass `-k` explicitly.
 - Only one execution runs per kernel at a time. While a background job is in flight, other `execute-code` calls on that kernel are refused until reaped via `poll-background`.
+- To stop running code: Ctrl-C a foreground `execute-code` (forwards SIGINT to the kernel); for a background job, `poll-background -j JOB --interrupt`.
 - Plots (matplotlib/R) are auto-captured as PNG, no `savefig` needed; path in block's `"plots"` array.
 - State lives under `~/.ipycli/` (override: `IPYCLI_HOME`).
 
@@ -26,7 +27,7 @@ ipycli execute-code notebook.ipynb                       # each cell = 1 block
 echo "print(x)" | ipycli execute-code                    # stdin
 ```
 
-Background: `execute-code -b`/`--background` returns `{job_id, block_ids, status:"running"}` immediately (default timeout 3600s vs 300s foreground). Reap with `poll-background` (`--wait` to block, `--keep` to not reap, `-j` to target one job).
+Background: `execute-code -b`/`--background` returns `{job_id, block_ids, status:"running"}` immediately (default timeout 3600s vs 300s foreground). Reap with `poll-background` (`--wait` to block, `--keep` to not reap, `-j` to target one job, `--interrupt` to send SIGINT and stop the job's currently running block).
 
 ## Commands
 
@@ -36,7 +37,7 @@ Background: `execute-code -b`/`--background` returns `{job_id, block_ids, status
 | `launch-kernel [SPEC]` | | Launch detached kernel (default `python3`) → `kernel_id` |
 | `list-kernels` | | Running kernels (dead ones pruned) |
 | `execute-code` | `[-c CODE \| FILE] [-k ID] [-t SECS] [-b]` | Run code (inline/file/stdin) |
-| `poll-background` | `[-k ID] [-j JOB] [--wait] [--keep]` | Monitor/reap background jobs |
+| `poll-background` | `[-k ID] [-j JOB] [--wait] [--keep] [--interrupt]` | Monitor/reap background jobs |
 | `list-variables` | `[-k ID]` | User-defined vars: name, type, repr |
 | `restart-kernel` | `[-k ID]` | Fresh process; clears vars + history |
 | `stop-kernel` | `[-k ID]` | Terminate + deregister |
