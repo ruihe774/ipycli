@@ -21,8 +21,20 @@ uv tool install .                           # from a checkout of this repo
 Then ensure a `python3` kernel spec is registered (needed once per Python env):
 
 ```bash
-uv tool run --from ipycli python -m ipykernel install --user
+uv tool run --from ipycli python -m ipykernel install --sys-prefix
 ```
+
+Use `--sys-prefix` here, not `--user`. `ipykernel` ships its own generic
+`python3` kernelspec (unqualified `"python"` in `argv`) as package data
+installed straight into the `uv tool` venv's `share/jupyter/kernels/python3`.
+That `sys.prefix` kernels directory is searched *before* the user kernels
+directory (`~/.local/share/jupyter/kernels`), so a spec installed with
+`--user` gets silently shadowed by ipykernel's bundled one — and the
+unqualified `"python"` then resolves to whatever `python` is first on
+`PATH` (often the system interpreter), which fails with `No module named
+ipykernel_launcher`. Installing with `--sys-prefix` overwrites that
+shadowing spec in place with one pointing at the correct absolute
+interpreter path.
 
 Verify:
 
